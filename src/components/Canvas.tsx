@@ -26,12 +26,6 @@ export const Canvas = () => {
 
 	const rotatedPoints = Geometry.getRotatedPoints(rotationAngle);
 
-	const getAngleFromCenter = (x: number, y: number) => {
-		const dx = x - Geometry.centerX;
-		const dy = y - Geometry.centerY;
-		return Math.atan2(dy, dx) * (180 / Math.PI);
-	};
-
 	const pointNearAnyLine = (x: number, y: number) => {
 		return connections.some(([from, to]) => {
 			const p1 = rotatedPoints[from];
@@ -61,7 +55,7 @@ export const Canvas = () => {
 
 		if (distance >= Geometry.radius - 30 && distance <= Geometry.radius + 40) {
 			isRotatingRef.current = true;
-			lastAngleRef.current = getAngleFromCenter(x, y);
+			lastAngleRef.current = Geometry.getAngleFromCenter(x, y);
 			lastTimestampRef.current = performance.now();
 			if (animationFrameRef.current) {
 				cancelAnimationFrame(animationFrameRef.current);
@@ -76,7 +70,7 @@ export const Canvas = () => {
 		const pos = Geometry.getRelativePosition(e, svgRef.current!);
 		const { x, y } = pos;
 
-		const currentAngle = getAngleFromCenter(x, y);
+		const currentAngle = Geometry.getAngleFromCenter(x, y);
 		const deltaAngle = currentAngle - lastAngleRef.current;
 
 		const now = performance.now();
@@ -122,7 +116,6 @@ export const Canvas = () => {
 		};
 	}, []);
 
-	// Tremor nas linhas finalizadas
 	useEffect(() => {
 		let rafId: number;
 
