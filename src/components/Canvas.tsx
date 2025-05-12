@@ -5,7 +5,7 @@ const centerY = 250;
 const radius = 180;
 const totalPoints = 13;
 const POINT_DETECTION_RADIUS = 20;
-const POINT_RADIUS = 6;
+const POINT_RADIUS = 8;
 const LINE_DELETION_THRESHOLD = 8;
 
 type Point = { x: number; y: number };
@@ -27,6 +27,19 @@ const getRotatedPoints = (angleDeg: number): Point[] => {
   });
 };
 
+const getRelativePosition = (
+  e: MouseEvent | TouchEvent,
+  svgRef: SVGSVGElement
+) => {
+  const rect = svgRef.getBoundingClientRect();
+  const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+  const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+  return {
+    x: clientX - rect.left,
+    y: clientY - rect.top,
+  };
+};
+
 export const Canvas = () => {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [animatedConnections, setAnimatedConnections] = useState<AnimatedConnection[]>([]);
@@ -34,6 +47,9 @@ export const Canvas = () => {
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
   const [rotationAngle, setRotationAngle] = useState(300);
   const [hoveredLine, setHoveredLine] = useState<Connection | null>(null);
+  const [centerPointVisible, setCenterPointVisible] = useState(false);
+  const [centerPointHovered, setCenterPointHovered] = useState(false);
+  const [lineWiggles, setLineWiggles] = useState<Map<string, { dx1: number; dy1: number; dx2: number; dy2: number }>>(new Map());
 
   const svgRef = useRef<SVGSVGElement>(null);
   const isRotatingRef = useRef(false);
@@ -60,10 +76,10 @@ export const Canvas = () => {
     });
   };
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    const rect = svgRef.current!.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+  const handlePointerDown = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    const pos = getRelativePosition(e.nativeEvent, svgRef.current!);
+    const { x, y } = pos;
     const distance = Math.hypot(x - centerX, y - centerY);
 
     const clickedNearLine = pointNearAnyLine(x, y);
@@ -88,13 +104,12 @@ export const Canvas = () => {
     }
   };
 
-  const handleMouseMoveGlobal = (e: MouseEvent) => {
+  const handleMouseMoveGlobal = (e: MouseEvent | TouchEvent) => {
     if (!isRotatingRef.current || lastAngleRef.current === null) return;
     if (startedOnLineRef.current) return;
 
-    const rect = svgRef.current!.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const pos = getRelativePosition(e, svgRef.current!);
+    const { x, y } = pos;
 
     const currentAngle = getAngleFromCenter(x, y);
     const deltaAngle = currentAngle - lastAngleRef.current;
@@ -111,7 +126,7 @@ export const Canvas = () => {
     lastTimestampRef.current = now;
   };
 
-  const handleMouseUpGlobal = () => {
+  const handleMouseUpGlobal = (_e: MouseEvent | TouchEvent) => {
     if (startedOnLineRef.current) {
       startedOnLineRef.current = false;
       return;
@@ -126,18 +141,51 @@ export const Canvas = () => {
   };
 
   useEffect(() => {
-    window.addEventListener('mousemove', handleMouseMoveGlobal);
-    window.addEventListener('mouseup', handleMouseUpGlobal);
+    const handleMove = (e: MouseEvent | TouchEvent) => handleMouseMoveGlobal(e);
+    const handleUp = (e: MouseEvent | TouchEvent) => handleMouseUpGlobal(e);
+
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+    window.addEventListener('touchmove', handleMove, { passive: false });
+    window.addEventListener('touchend', handleUp);
+
     return () => {
-      window.removeEventListener('mousemove', handleMouseMoveGlobal);
-      window.removeEventListener('mouseup', handleMouseUpGlobal);
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+      window.removeEventListener('touchmove', handleMove);
+      window.removeEventListener('touchend', handleUp);
     };
   }, []);
 
-  const handleMouseMoveSvg = (e: React.MouseEvent<SVGSVGElement>) => {
-    const rect = svgRef.current!.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+  // Tremor nas linhas finalizadas
+  useEffect(() => {
+    let rafId: number;
+
+    const animateWiggle = () => {
+      setLineWiggles(() => {
+        const updated = new Map<string, { dx1: number; dy1: number; dx2: number; dy2: number }>();
+        connections.forEach(([from, to], idx) => {
+          const key = `${from}-${to}-${idx}`;
+          const amp = 1.5;
+          updated.set(key, {
+            dx1: (Math.random() - 0.5) * amp,
+            dy1: (Math.random() - 0.5) * amp,
+            dx2: (Math.random() - 0.5) * amp,
+            dy2: (Math.random() - 0.5) * amp,
+          });
+        });
+        return updated;
+      });
+      rafId = requestAnimationFrame(animateWiggle);
+    };
+
+    animateWiggle();
+    return () => cancelAnimationFrame(rafId);
+  }, [connections]);
+
+  const handleMouseMoveSvg = (e: React.MouseEvent | React.TouchEvent) => {
+    const pos = getRelativePosition(e.nativeEvent, svgRef.current!);
+    const { x, y } = pos;
 
     if (draggingFrom !== null) {
       setMousePos({ x, y });
@@ -162,10 +210,9 @@ export const Canvas = () => {
     setHoveredLine(hovered ?? null);
   };
 
-  const handleMouseUpSvg = (e: React.MouseEvent<SVGSVGElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+  const handleMouseUpSvg = (e: React.MouseEvent | React.TouchEvent) => {
+    const pos = getRelativePosition(e.nativeEvent, svgRef.current!);
+    const { x: mouseX, y: mouseY } = pos;
 
     if (draggingFrom !== null) {
       const targetIndex = rotatedPoints.findIndex(
@@ -245,6 +292,37 @@ export const Canvas = () => {
     animationFrameRef.current = requestAnimationFrame(step);
   };
 
+  const animateRotationTo = (target: number) => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+
+    const normalize = (angle: number) => ((angle % 360) + 360) % 360;
+    const start = normalize(rotationAngle);
+    target = normalize(target);
+
+    let diff = target - start;
+    if (diff > 180) diff -= 360;
+    if (diff < -180) diff += 360;
+
+    const duration = 500;
+    const startTime = performance.now();
+
+    const animate = (time: number) => {
+      const elapsed = time - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 0.5 - 0.5 * Math.cos(Math.PI * progress); // easeInOut
+
+      const newAngle = normalize(start + diff * eased);
+      setRotationAngle(newAngle);
+
+      if (progress < 1) {
+        animationFrameRef.current = requestAnimationFrame(animate);
+      }
+    };
+
+    animationFrameRef.current = requestAnimationFrame(animate);
+  };
   const distancePointToSegment = (
     px: number,
     py: number,
@@ -285,6 +363,7 @@ export const Canvas = () => {
     setConnections([]);
     setAnimatedConnections([]);
     setHoveredLine(null);
+    setCenterPointVisible(false);
   };
 
   return (
@@ -293,24 +372,34 @@ export const Canvas = () => {
         ref={svgRef}
         width={500}
         height={500}
-        className="bg-white border"
-        onMouseDown={handleMouseDown}
+        className="bg-white border touch-none"
+        onMouseDown={handlePointerDown}
+        onTouchStart={handlePointerDown}
         onMouseMove={handleMouseMoveSvg}
+        onTouchMove={handleMouseMoveSvg}
         onMouseUp={handleMouseUpSvg}
+        onTouchEnd={handleMouseUpSvg}
       >
         {connections.map(([from, to], idx) => {
           const isHovered =
             hoveredLine &&
             ((hoveredLine[0] === from && hoveredLine[1] === to) ||
               (hoveredLine[0] === to && hoveredLine[1] === from));
+          const key = `${from}-${to}-${idx}`;
+          const wiggle = lineWiggles.get(key) ?? { dx1: 0, dy1: 0, dx2: 0, dy2: 0 };
+          const x1 = rotatedPoints[from].x + wiggle.dx1;
+          const y1 = rotatedPoints[from].y + wiggle.dy1;
+          const x2 = rotatedPoints[to].x + wiggle.dx2;
+          const y2 = rotatedPoints[to].y + wiggle.dy2;
+
           return (
             <line
-              key={`${from}-${to}-${idx}`}
-              x1={rotatedPoints[from].x}
-              y1={rotatedPoints[from].y}
-              x2={rotatedPoints[to].x}
-              y2={rotatedPoints[to].y}
-              stroke={isHovered ? 'rgba(255, 0, 0, 0.75)' : 'rgba(240, 237, 83, 0.88)'}
+              key={key}
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              stroke={isHovered ? 'rgba(255, 0, 0, 0.75)' : 'rgba(255, 252, 61, 0.75)'}
               strokeWidth={isHovered ? 4 : 2}
               style={{
                 filter: isHovered ? 'drop-shadow(0 0 4px rgba(255, 0, 0, 0.75))' : 'none',
@@ -333,11 +422,31 @@ export const Canvas = () => {
               y1={p1.y}
               x2={x}
               y2={y}
-              stroke="rgba(240, 237, 83, 0.88)"
+              stroke="rgba(255, 252, 61, 0.75)"
               strokeWidth={2}
             />
           );
         })}
+
+        <circle
+          cx={centerX}
+          cy={centerY}
+          r={POINT_RADIUS}
+          fill="rgba(255, 252, 61, 0.75)"
+          opacity={centerPointVisible ? 1 : 0}
+          onClick={() => setCenterPointVisible((prev) => !prev)}
+          onMouseEnter={() => setCenterPointHovered(true)}
+          onMouseLeave={() => setCenterPointHovered(false)}
+          style={{
+            cursor: 'pointer',
+            filter: centerPointHovered
+              ? 'drop-shadow(0 0 4px rgba(255, 252, 61, 0.75))'
+              : 'none',
+            transition: 'all 0.3s ease',
+            stroke: centerPointHovered ? 'rgba(255, 252, 61, 0.75)' : 'transparent',
+            strokeWidth: centerPointHovered ? 4 : 0,
+          }}
+        />
 
         {draggingFrom !== null && mousePos && (
           <line
@@ -379,6 +488,13 @@ export const Canvas = () => {
       >
         Limpar Tudo
       </button>
+      <button
+        onClick={() => animateRotationTo(300)}
+        className="mt-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
+      >
+        Reset Rotation
+      </button>
+      
     </div>
   );
 };
