@@ -330,7 +330,7 @@ export const Canvas = () => {
 				ref={svgRef}
 				width={500}
 				height={500}
-				className="bg-white border touch-none"
+				className="touch-none"
 				onMouseDown={handlePointerDown}
 				onTouchStart={handlePointerDown}
 				onMouseMove={handleMouseMoveSvg}
@@ -357,10 +357,10 @@ export const Canvas = () => {
 							y1={y1}
 							x2={x2}
 							y2={y2}
-							stroke={isHovered ? 'rgba(255, 0, 0, 0.75)' : 'rgba(255, 252, 61, 0.75)'}
+							stroke={isHovered ? 'rgb(255, 0, 0)' : 'rgb(255, 252, 61)'}
 							strokeWidth={isHovered ? 4 : 2}
 							style={{
-								filter: isHovered ? 'drop-shadow(0 0 4px rgba(255, 0, 0, 0.75))' : 'none',
+								filter: isHovered ? 'drop-shadow(0 0 4px rgb(255, 0, 0))' : 'none',
 								transition: 'stroke 0.3s ease, stroke-width 0.3s ease, filter 0.3s ease',
 							}}
 						/>
@@ -380,7 +380,7 @@ export const Canvas = () => {
 							y1={p1.y}
 							x2={x}
 							y2={y}
-							stroke="rgba(255, 252, 61, 0.75)"
+							stroke="rgb(255, 252, 61)"
 							strokeWidth={2}
 						/>
 					);
@@ -390,7 +390,7 @@ export const Canvas = () => {
 					cx={Geometry.centerX}
 					cy={Geometry.centerY}
 					r={POINT_RADIUS}
-					fill="rgba(255, 252, 61, 0.75)"
+					fill="rgb(255, 252, 61)"
 					opacity={centerPointVisible ? 1 : 0}
 					onClick={() => setCenterPointVisible((prev) => !prev)}
 					onMouseEnter={() => setCenterPointHovered(true)}
@@ -398,10 +398,10 @@ export const Canvas = () => {
 					style={{
 						cursor: 'pointer',
 						filter: centerPointHovered
-							? 'drop-shadow(0 0 4px rgba(255, 252, 61, 0.75))'
+							? 'drop-shadow(0 0 4px rgb(255, 252, 61))'
 							: 'none',
 						transition: 'all 0.3s ease',
-						stroke: centerPointHovered ? 'rgba(255, 252, 61, 0.75)' : 'transparent',
+						stroke: centerPointHovered ? 'rgb(255, 252, 61)' : 'transparent',
 						strokeWidth: centerPointHovered ? 4 : 0,
 					}}
 				/>
@@ -440,18 +440,21 @@ export const Canvas = () => {
 				))}
 			</svg>
 
-			<button
-				onClick={clearAll}
-				className="mt-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
-			>
-				Limpar Tudo
-			</button>
-			<button
-				onClick={() => animateRotationTo(300)}
-				className="mt-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
-			>
-				Reset Rotation
-			</button>
+			<div className="flex justify-center gap-x-6 mt-2 p-2 border w-full">
+				<button
+					onClick={clearAll}
+					className="px-4 py-2 bg-githubgray text-white rounded hover:bg-red-600 transition"
+				>
+					Clear Canvas
+				</button>
+				<button
+					onClick={() => animateRotationTo(300)}
+					className="px-4 py-2 bg-githubgray text-white rounded hover:bg-red-600 transition"
+				>
+					Reset Rotation
+				</button>
+			</div>
+
 
 		</div>
 	);
