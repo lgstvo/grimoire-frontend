@@ -12,7 +12,7 @@ export const Canvas = () => {
 	const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
 	const [rotationAngle, setRotationAngle] = useState(300);
 	const [hoveredLine, setHoveredLine] = useState<Geometry.Connection | null>(null);
-	const [centerPointVisible, setCenterPointVisible] = useState(false);
+	const [centerPointState, setCenterPointState] = useState<0 | 1 | 2>(0);
 	const [centerPointHovered, setCenterPointHovered] = useState(false);
 	const [lineWiggles, setLineWiggles] = useState<Map<string, { dx1: number; dy1: number; dx2: number; dy2: number }>>(new Map());
 
@@ -25,6 +25,10 @@ export const Canvas = () => {
 	const animationFrameRef = useRef<number | null>(null);
 
 	const rotatedPoints = Geometry.getRotatedPoints(rotationAngle);
+
+	const toggleCenterPointState = () => {
+		setCenterPointState((prev) => (prev + 1) % 3 as 0 | 1 | 2);
+	};
 
 	const pointNearAnyLine = (x: number, y: number) => {
 		return connections.some(([from, to]) => {
@@ -321,7 +325,7 @@ export const Canvas = () => {
 		setConnections([]);
 		setAnimatedConnections([]);
 		setHoveredLine(null);
-		setCenterPointVisible(false);
+		setCenterPointState(0);
 	};
 
 	return (
@@ -391,8 +395,8 @@ export const Canvas = () => {
 					cy={Geometry.centerY}
 					r={POINT_RADIUS}
 					fill="rgb(255, 252, 61)"
-					opacity={centerPointVisible ? 1 : 0}
-					onClick={() => setCenterPointVisible((prev) => !prev)}
+					opacity={centerPointState > 0 ? 1 : 0}
+					onClick={toggleCenterPointState}
 					onMouseEnter={() => setCenterPointHovered(true)}
 					onMouseLeave={() => setCenterPointHovered(false)}
 					style={{
@@ -403,8 +407,21 @@ export const Canvas = () => {
 						transition: 'all 0.3s ease',
 						stroke: centerPointHovered ? 'rgb(255, 252, 61)' : 'transparent',
 						strokeWidth: centerPointHovered ? 4 : 0,
+						pointerEvents: 'auto', // garante que o SVG invisível continue clicável
 					}}
 				/>
+				{centerPointState === 2 && (
+					<circle
+						cx={Geometry.centerX}
+						cy={Geometry.centerY}
+						r={POINT_RADIUS + 9}
+						fill="none"
+						stroke="rgb(255, 252, 61)"
+						strokeWidth={2}
+						strokeDasharray="4 2"
+						pointerEvents="none"
+					/>
+				)}
 
 				{draggingFrom !== null && mousePos && (
 					<line
