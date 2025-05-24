@@ -5,6 +5,7 @@ const POINT_DETECTION_RADIUS = 20;
 const POINT_RADIUS = 8;
 const LINE_DELETION_THRESHOLD = 8;
 
+
 export const Canvas = () => {
 	const [connections, setConnections] = useState<Geometry.Connection[]>([]);
 	const [animatedConnections, setAnimatedConnections] = useState<Geometry.AnimatedConnection[]>([]);
@@ -13,8 +14,14 @@ export const Canvas = () => {
 	const [rotationAngle, setRotationAngle] = useState(300);
 	const [hoveredLine, setHoveredLine] = useState<Geometry.Connection | null>(null);
 	const [centerPointState, setCenterPointState] = useState<0 | 1 | 2>(0);
+	const [mainColor, setMainColor] = useState<string>('rgb(255, 252, 61)');
 	const [centerPointHovered, setCenterPointHovered] = useState(false);
 	const [lineWiggles, setLineWiggles] = useState<Map<string, { dx1: number; dy1: number; dx2: number; dy2: number }>>(new Map());
+	const [canvasState, setCanvasState] = useState<Geometry.CanvasState>({
+		matrix: [],
+		centerPointState: 0
+	});
+	
 
 	const svgRef = useRef<SVGSVGElement>(null);
 	const isRotatingRef = useRef(false);
@@ -67,6 +74,17 @@ export const Canvas = () => {
 		}
 	};
 
+	const buildAdjacencyMatrix = (connections: Geometry.Connection[], pointCount: number) => {
+		const matrix = Array.from({ length: pointCount }, () => Array(pointCount).fill(0));
+
+		connections.forEach(([from, to]) => {
+			matrix[from][to] = 1;
+			matrix[to][from] = 1;
+		});
+
+		return matrix;
+	};
+
 	const handleMouseMoveGlobal = (e: MouseEvent | TouchEvent) => {
 		if (!isRotatingRef.current || lastAngleRef.current === null) return;
 		if (startedOnLineRef.current) return;
@@ -103,6 +121,7 @@ export const Canvas = () => {
 		}
 	};
 
+	//use effect responsible for getting position for drawing lines
 	useEffect(() => {
 		const handleMove = (e: MouseEvent | TouchEvent) => handleMouseMoveGlobal(e);
 		const handleUp = (e: MouseEvent | TouchEvent) => handleMouseUpGlobal(e);
@@ -120,6 +139,18 @@ export const Canvas = () => {
 		};
 	}, []);
 
+	useEffect(() => {
+		const matrix = buildAdjacencyMatrix(connections, rotatedPoints.length);
+
+		setCanvasState({
+			matrix,
+			centerPointState,
+		});
+
+		console.log('Canvas State:', canvasState);
+	}, [connections, centerPointState, centerPointHovered, rotatedPoints.length]);
+
+	//use effect responsible for wiggle animation
 	useEffect(() => {
 		let rafId: number;
 
@@ -326,6 +357,7 @@ export const Canvas = () => {
 		setAnimatedConnections([]);
 		setHoveredLine(null);
 		setCenterPointState(0);
+		console.clear();
 	};
 
 	return (
@@ -361,7 +393,7 @@ export const Canvas = () => {
 							y1={y1}
 							x2={x2}
 							y2={y2}
-							stroke={isHovered ? 'rgb(255, 0, 0)' : 'rgb(255, 252, 61)'}
+							stroke={isHovered ? 'rgb(255, 0, 0)' : `${mainColor}`}
 							strokeWidth={isHovered ? 4 : 2}
 							style={{
 								filter: isHovered ? 'drop-shadow(0 0 4px rgb(255, 0, 0))' : 'none',
@@ -384,7 +416,7 @@ export const Canvas = () => {
 							y1={p1.y}
 							x2={x}
 							y2={y}
-							stroke="rgb(255, 252, 61)"
+							stroke={mainColor}
 							strokeWidth={2}
 						/>
 					);
@@ -402,10 +434,10 @@ export const Canvas = () => {
 					style={{
 						cursor: 'pointer',
 						filter: centerPointHovered
-							? 'drop-shadow(0 0 4px rgb(255, 252, 61))'
+							? `drop-shadow(0 0 4px ${mainColor})`
 							: 'none',
 						transition: 'all 0.3s ease',
-						stroke: centerPointHovered ? 'rgb(255, 252, 61)' : 'transparent',
+						stroke: centerPointHovered ? `${mainColor}` : 'transparent',
 						strokeWidth: centerPointHovered ? 4 : 0,
 						pointerEvents: 'auto', // garante que o SVG invisível continue clicável
 					}}
@@ -416,7 +448,7 @@ export const Canvas = () => {
 						cy={Geometry.centerY}
 						r={POINT_RADIUS + 9}
 						fill="none"
-						stroke="rgb(255, 252, 61)"
+						stroke={mainColor}
 						strokeWidth={2}
 						strokeDasharray="4 2"
 						pointerEvents="none"
@@ -469,6 +501,14 @@ export const Canvas = () => {
 					className="px-4 py-2 bg-githubgray text-white rounded hover:bg-red-600 transition"
 				>
 					Reset Rotation
+				</button>
+				<button
+					onClick={() => {
+						console.log('Canvas State:', canvasState);
+					}}
+					className="px-4 py-2 bg-githubgray text-white rounded hover:bg-red-600 transition"
+				>
+					Log
 				</button>
 			</div>
 

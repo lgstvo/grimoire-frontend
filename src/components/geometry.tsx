@@ -12,6 +12,11 @@ export type AnimatedConnection = {
 	progress: number;
 };
 
+export type CanvasState = {
+	matrix: number[][];  // adjacency matrix
+	centerPointState: 0 | 1 | 2;
+};
+
 export const getRotatedPoints = (angleDeg: number): Point[] => {
 	const angleRad = (angleDeg * Math.PI) / 180;
 	return Array.from({ length: totalPoints }, (_, i) => {
