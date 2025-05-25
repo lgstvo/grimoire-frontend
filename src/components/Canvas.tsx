@@ -463,9 +463,9 @@ export const Canvas = ({ spellInfo, setSpellInfo }: CanvasProps) => {
 							x2={x2}
 							y2={y2}
 							stroke={isHovered ? 'rgb(255, 0, 0)' : `${mainColor}`}
-							strokeWidth={isHovered ? 4 : 2}
+							strokeWidth={isHovered ? 4 : 3}
 							style={{
-								filter: isHovered ? 'drop-shadow(0 0 4px rgb(255, 0, 0))' : 'none',
+								filter: isHovered ? 'drop-shadow(0 0 4px rgb(255, 0, 0))' : spellInfo.isMatch ? `drop-shadow(0 0 10px ${mainColor})` : 'none',
 								transition: 'stroke 0.3s ease, stroke-width 0.3s ease, filter 0.3s ease',
 							}}
 						/>
