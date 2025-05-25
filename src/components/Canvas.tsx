@@ -6,7 +6,22 @@ const POINT_RADIUS = 8;
 const LINE_DELETION_THRESHOLD = 8;
 
 
-export const Canvas = () => {
+interface CanvasProps {
+	spellInfo: {
+		title: string;
+		description: string;
+		mainColor: string;
+		isMatch: boolean;
+	};
+		setSpellInfo: React.Dispatch<React.SetStateAction<{
+		title: string;
+		description: string;
+		mainColor: string;
+		isMatch: boolean;
+	}>>;
+}
+
+export const Canvas = ({ spellInfo, setSpellInfo }: CanvasProps) => {
 	const [connections, setConnections] = useState<Geometry.Connection[]>([]);
 	const [animatedConnections, setAnimatedConnections] = useState<Geometry.AnimatedConnection[]>([]);
 	const [draggingFrom, setDraggingFrom] = useState<number | null>(null);
@@ -21,7 +36,8 @@ export const Canvas = () => {
 		matrix: [],
 		centerPointState: 0
 	});
-	
+	const [isWiggling, setIsWiggling] = useState<boolean>(true);
+	const [lineBeingDeleted, setLineBeingDeleted] = useState<Geometry.Connection | null>(null);
 
 	const svgRef = useRef<SVGSVGElement>(null);
 	const isRotatingRef = useRef(false);
@@ -59,8 +75,16 @@ export const Canvas = () => {
 
 		if (clickedNearLine) {
 			startedOnLineRef.current = true;
+			const hovered = connections.find(([from, to]) => {
+				const p1 = rotatedPoints[from];
+				const p2 = rotatedPoints[to];
+				const distance = distancePointToSegment(x, y, p1.x, p1.y, p2.x, p2.y);
+				return distance < LINE_DELETION_THRESHOLD;
+			});
+			setLineBeingDeleted(hovered ?? null);
 			return;
 		}
+
 
 		if (clickedNearPoint) return;
 
@@ -110,6 +134,7 @@ export const Canvas = () => {
 	const handleMouseUpGlobal = (_e: MouseEvent | TouchEvent) => {
 		if (startedOnLineRef.current) {
 			startedOnLineRef.current = false;
+			setLineBeingDeleted(null);
 			return;
 		}
 
@@ -152,6 +177,11 @@ export const Canvas = () => {
 
 	//use effect responsible for wiggle animation
 	useEffect(() => {
+		if (!isWiggling) {
+			setLineWiggles(new Map());
+			return;
+		}
+
 		let rafId: number;
 
 		const animateWiggle = () => {
@@ -174,7 +204,43 @@ export const Canvas = () => {
 
 		animateWiggle();
 		return () => cancelAnimationFrame(rafId);
-	}, [connections]);
+	}, [connections, isWiggling]);
+
+	useEffect(() => {
+		const fetchData = async () => {
+			try {
+				const response = await fetch('http://localhost:4000/canvasState', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify(canvasState),
+				});
+				const data = await response.json();
+				console.log('Server response:', data);
+
+				setSpellInfo({
+					title: data.title,
+					description: data.description,
+					mainColor: data.mainColor,
+					isMatch: data.isMatch,
+				});
+
+				if (data.isMatch) {
+					setMainColor(data.mainColor);
+					setIsWiggling(false);
+				} else {
+					setMainColor('rgb(255, 0, 0)');
+					setIsWiggling(true);
+				}
+			} catch (error) {
+				console.error('Error fetching data:', error);
+				setIsWiggling(true);
+			}
+		};
+
+		fetchData();
+	}, [canvasState]);
 
 	const handleMouseMoveSvg = (e: React.MouseEvent | React.TouchEvent) => {
 		const pos = Geometry.getRelativePosition(e.nativeEvent, svgRef.current!);
@@ -229,17 +295,20 @@ export const Canvas = () => {
 			return;
 		}
 
-		if (hoveredLine) {
+		if (lineBeingDeleted) {
 			setConnections((prev) =>
 				prev.filter(
-					([a, b]) =>
-						!(
-							(a === hoveredLine[0] && b === hoveredLine[1]) ||
-							(a === hoveredLine[1] && b === hoveredLine[0])
-						)
+				([a, b]) =>
+					!(
+					(a === lineBeingDeleted[0] && b === lineBeingDeleted[1]) ||
+					(a === lineBeingDeleted[1] && b === lineBeingDeleted[0])
+					)
 				)
 			);
 			setHoveredLine(null);
+			setLineBeingDeleted(null);
+			startedOnLineRef.current = false;
+			return;
 		}
 	};
 
@@ -426,7 +495,7 @@ export const Canvas = () => {
 					cx={Geometry.centerX}
 					cy={Geometry.centerY}
 					r={POINT_RADIUS}
-					fill="rgb(255, 252, 61)"
+					fill={mainColor}
 					opacity={centerPointState > 0 ? 1 : 0}
 					onClick={toggleCenterPointState}
 					onMouseEnter={() => setCenterPointHovered(true)}

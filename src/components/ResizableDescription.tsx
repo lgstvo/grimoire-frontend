@@ -1,10 +1,19 @@
 import { useState, useRef, useEffect } from 'react';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 
-export const ResizableDescription = () => {
+interface ResizableDescriptionProps {
+  spellInfo: {
+    title: string;
+    description: string;
+    mainColor: string;
+    isMatch: boolean;
+  };
+}
+
+export const ResizableDescription = ({ spellInfo }: ResizableDescriptionProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [width, setWidth] = useState(500);
+  const [width, setWidth] = useState(200);
   const isResizing = useRef(false);
 
   useEffect(() => {
@@ -34,15 +43,25 @@ export const ResizableDescription = () => {
     setIsOpen(!isOpen);
   };
 
+  useEffect(() => {
+    setIsAnimating(true);
+    if (spellInfo.isMatch) {
+      setIsOpen(true);
+    } else {
+      setIsOpen(false);
+    }
+  }, [spellInfo.isMatch]);
+
+
   return (
-    <div className="relative h-full flex">
+    <div className="fixed top-0 right-0 h-full z-50 flex">
       {/* Sidebar */}
       <div
         className={`relative bg-gray-700 text-white h-full flex flex-col ${
           isAnimating ? 'transition-[width] duration-300 ease-in-out' : ''
         }`}
         style={{
-            width: isOpen ? `${width}px` : '150px',
+          width: isOpen ? `${width}px` : '10px',
         }}
       >
         {/* Resize bar */}
@@ -61,11 +80,11 @@ export const ResizableDescription = () => {
             isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
         >
-          <h2 className="text-lg font-bold mb-2">Descrição</h2>
-          <p>Desc</p>
+          <h2 className="text-lg font-bold mb-2">{spellInfo.title}</h2>
+          <p>{spellInfo.description}</p>
         </div>
 
-        {/* External toggle button absolutely positioned on the left edge */}
+        {/* External toggle button */}
         <button
           onClick={handleToggle}
           className="absolute top-4 right-full z-20 bg-gray-700 border border-gray-500 rounded-l p-1 hover:bg-gray-600"
