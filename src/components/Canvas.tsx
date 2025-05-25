@@ -38,6 +38,7 @@ export const Canvas = ({ spellInfo, setSpellInfo }: CanvasProps) => {
 	});
 	const [isWiggling, setIsWiggling] = useState<boolean>(true);
 	const [lineBeingDeleted, setLineBeingDeleted] = useState<Geometry.Connection | null>(null);
+	const [showSpellName, setShowSpellName] = useState(false);
 
 	const svgRef = useRef<SVGSVGElement>(null);
 	const isRotatingRef = useRef(false);
@@ -242,6 +243,17 @@ export const Canvas = ({ spellInfo, setSpellInfo }: CanvasProps) => {
 		fetchData();
 	}, [canvasState]);
 
+	useEffect(() => {
+		if (spellInfo.isMatch) {
+			setShowSpellName(true);
+		} else {
+			const timeout = setTimeout(() => {
+			setShowSpellName(false);
+			}, 600);
+			return () => clearTimeout(timeout);
+		}
+	}, [spellInfo.isMatch]);
+
 	const handleMouseMoveSvg = (e: React.MouseEvent | React.TouchEvent) => {
 		const pos = Geometry.getRelativePosition(e.nativeEvent, svgRef.current!);
 		const { x, y } = pos;
@@ -431,6 +443,20 @@ export const Canvas = ({ spellInfo, setSpellInfo }: CanvasProps) => {
 
 	return (
 		<div className="flex flex-col items-center gap-4 relative touch-none">
+			{showSpellName && (
+				<div
+					className={`absolute top-2 -translate-y-10 text-center text-4xl pointer-events-none font-quintessential font-bold
+					${spellInfo.isMatch ? 'magical-fade-in' : 'magical-fade-out'}`}
+					style={{
+					color: spellInfo.mainColor,
+					width: '100%',
+					textShadow: `0 0 2px ${mainColor}, 0 0 24px currentColor`,
+					}}
+				>
+					{spellInfo.title}
+				</div>
+			)}
+
 			<svg
 				ref={svgRef}
 				width={500}
@@ -486,7 +512,7 @@ export const Canvas = ({ spellInfo, setSpellInfo }: CanvasProps) => {
 							x2={x}
 							y2={y}
 							stroke={mainColor}
-							strokeWidth={2}
+							strokeWidth={3}
 						/>
 					);
 				})}
@@ -508,7 +534,7 @@ export const Canvas = ({ spellInfo, setSpellInfo }: CanvasProps) => {
 						transition: 'all 0.3s ease',
 						stroke: centerPointHovered ? `${mainColor}` : 'transparent',
 						strokeWidth: centerPointHovered ? 4 : 0,
-						pointerEvents: 'auto', // garante que o SVG invisível continue clicável
+						pointerEvents: 'auto',
 					}}
 				/>
 				{centerPointState === 2 && (

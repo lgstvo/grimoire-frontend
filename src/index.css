@@ -1,5 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=Quintessential&family=UnifrakturMaguntia&display=swap');
 @import "tailwindcss";
 
 @theme {
     --color-githubgray: #0D1117;
+    --font-quintessential:'Quintessential', serif;
+    --font-unifrakur:'UnifrakturMaguntia', cursive;
+}
+
+@keyframes magicalFadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+    filter: blur(4px) brightness(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+    filter: blur(1px) brightness(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0) brightness(1);
+  }
+}
+
+@keyframes magicalFadeOut {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0) brightness(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+    filter: blur(0) brightness(0.3);
+  }
+}
+
+.magical-fade-in {
+  animation: magicalFadeIn 0.5s ease forwards;
+}
+
+.magical-fade-out {
+  animation: magicalFadeOut 2s ease forwards;
 }

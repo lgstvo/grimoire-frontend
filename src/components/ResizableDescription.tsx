@@ -80,8 +80,8 @@ export const ResizableDescription = ({ spellInfo }: ResizableDescriptionProps) =
             isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
         >
-          <h2 className="text-lg font-bold mb-2">{spellInfo.title}</h2>
-          <p>{spellInfo.description}</p>
+          <h1 className="font-unifrakur font-bold mb-2 text-3xl">{spellInfo.title}</h1>
+          <p className="text-lg font-quintessential">{spellInfo.description}</p>
         </div>
 
         {/* External toggle button */}
